@@ -2,6 +2,17 @@
 #include <string>
 #include <LoRa.h>
 
+
+// you should supply a function that can send a packet to the receiver
+// the max possible packet size is 255 bytes
+// the arguments should be the buffer and the size of it
+void send(uint8_t* data, int size) {
+    LoRa.beginPacket();
+    LoRa.write(data, size)
+    LoRa.endPacket();
+}
+
+
 int main() {
     // Initialize lora
     if (!LoRa.begin(868E6))
@@ -10,8 +21,8 @@ int main() {
         return -1;
     }
 
-    // Create interface
-    Comm comm();
+    // Create interface and set transmit function
+    Comm comm(send);
 
     // Create fields
     comm.addField<int>("example_int");
@@ -27,13 +38,4 @@ int main() {
 
     // Sends field values
     comm.sendReport();
-
-    // On the receiver side add a packet receive callback:
-    LoRa.onReceive(comm.receiverCallback);
-
-    // you read can field values like this (types should match)
-    int example_int = comm.getField<int>("example_int");
-    
-    // For strings:
-    std::string test = comm.getField<std::string>("string_example");
 }

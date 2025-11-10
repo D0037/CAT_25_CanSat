@@ -5,55 +5,34 @@
 #include <type_traits>
 #include "comm.hpp"
 #include <vector>
-#include <LoRa.h>
 
 template <typename T>
 int Comm::addField(std::string field, int maxLength)
 {
+    // check if a field alread exists with the name
+    for (std::string f : structure) if (f == field) return -2;
+
     // handle std::string differently
     if constexpr (std::is_same_v<T, std::string>)
     {
-        // Iterate through fields, also checks if new field fits
-        for (int i = 0; i < PACKET_SIZE - maxLength + 1; i++)
-        {
-            if (field == structure[i]) return -2;   // Exit if field already exists
-            
-            // Empty field found
-            if (structure[i] == "")
-            {
-                // Create maxLength number of fields for the string
-                for (int j = 0; j < maxLength; j++)
-                {
-                    structure[i + j] = field;
-                }
 
-                return 0;
-            }
+        // Add new fields
+        for (int i = 0; i < maxLength; i++)
+        {
+            structure.push_back(field);
         }
 
-        return -1;
+        return 0;
     }
     else // Handles every other datatype
     {
-        // Iterate through fields: checks for field repetition, also check if new field fits
-        for (int i = 0; i < PACKET_SIZE - sizeof(T) + 1; i++)
+        // Add new fields
+        for (int i = 0; i < sizeof(T); i++)
         {
-            if (field == structure[i]) return -2; // Exit if field name already exists
-            
-            // create fields for the data
-            if (structure[i] == "")
-            {
-                for (int j = 0; j < sizeof(T); j++)
-                {
-                    structure[i + j] = field;
-                }
-
-                return 0;
-            }
-        
+            structure.push_back(field);
         }
 
-        return -1;
+        return 0;
     }
 }
 
@@ -92,12 +71,19 @@ int Comm::setField(std::string field, T value)
 
 template <typename T> // type of field to get
 T Comm::getField(std::string field)
-{
+{   
+    std::cout << std::hex << std::uppercase;
+    for (int i = 0; i < buffSize; i++)
+    {
+        std::cout << (int) lastPacket[i] << " ";
+    }
+    std::cout << "\n";
+
     T value;
     if constexpr (std::is_same_v<T, std::string>)
     {
         // store strings character by character
-        for (int i = 0; i < PACKET_SIZE; i++)
+        for (int i = 0; i < structure.size(); i++)
         {
             if (structure[i] == field)
             {
@@ -107,7 +93,7 @@ T Comm::getField(std::string field)
     }
     else
     {
-        for (int i = 0; i < PACKET_SIZE; i++)
+        for (int i = 0; i < structure.size(); i++)
         {
             if (structure[i] == field)
             {   
@@ -120,8 +106,14 @@ T Comm::getField(std::string field)
     return value;
 }
 
+int Comm::sendReport() {
+    return sendData(outBuff, structure.size(), REPORT);
+}
+
 int Comm::sendData(uint8_t* data, int dataLength, uint8_t packetType) {
     std::cout << std::hex << std::uppercase;
+
+    std::cout << "dl: 0x" << dataLength << "\n";
 
     // increase buffer size, if it is needed
     if (dataLength > buffSize)
@@ -139,7 +131,7 @@ int Comm::sendData(uint8_t* data, int dataLength, uint8_t packetType) {
         sendBuff[0] = outSeqNum++ % 256;
 
         // upper half: transfer packet continuation, lower half: packet type
-        sendBuff[1] = packetType | ((i != 0) << 4);
+        sendBuff[1] = ((i != 0) << 4) | packetType;
 
         // low byte of packet size (only relevant in the leading transfer packet)
         sendBuff[2] = dataLength & 0x00FF;
@@ -149,10 +141,20 @@ int Comm::sendData(uint8_t* data, int dataLength, uint8_t packetType) {
 
         // send data
         std::memcpy(sendBuff + 4, data + (i * 251), 251);
-        send(sendBuff, 255);
+        writeHAL(sendBuff, 255);
     }
     // Deals with remaining data
-    if (dataLength % 251 != 0)
+    if (dataLength < 251) {
+        uint8_t sendBuff[4 + dataLength];
+        sendBuff[0] = outSeqNum++;
+        sendBuff[1] = packetType;
+        sendBuff[2] = dataLength;
+        sendBuff[3] = 0;
+
+        std::memcpy(sendBuff + 4, data, dataLength + 4);
+        writeHAL(sendBuff, dataLength + 4);
+    }
+    else if (dataLength % 251 != 0)
     {
         uint8_t sendBuff[4 + (dataLength % 251)]; // creates correctly sized send buffer
         sendBuff[0] = outSeqNum++; // Sequence number
@@ -161,7 +163,7 @@ int Comm::sendData(uint8_t* data, int dataLength, uint8_t packetType) {
 
         // Sends data
         std::memcpy(sendBuff + 4, data + dataLength - (dataLength % 251), dataLength % 251);
-        send(sendBuff, 4 + (dataLength % 251));
+        writeHAL(sendBuff, 4 + (dataLength % 251));
     }
 
     return 0;
@@ -171,6 +173,10 @@ int Comm::processRawData(uint8_t* data, int dataLength)
 {
     uint8_t header[4];
     std::memcpy(header, data, 4);
+
+    std::cout << "packet ";
+    for (int i = 0; i < dataLength; i++) std::cout << (int) data[i] << " ";
+    std::cout << "\n";
 
     bool continuation = header[1] & 0x10;
 
@@ -182,20 +188,21 @@ int Comm::processRawData(uint8_t* data, int dataLength)
         if (!continuation)
         {
             packetSize = header[2] | (header[3] << 8);
+            std::cout << "packetsize: " << packetSize << "\n";
 
             // Buffer is not large enough, resize is needed
             if (packetSize > buffSize)
             {
                 inBuff = (uint8_t*) std::realloc(inBuff, packetSize);
                 outBuff = (uint8_t*) std::realloc(outBuff, packetSize);
-
             }
 
             // copy to buffer
             std::memcpy(inBuff, data + 4, std::min<uint16_t>(packetSize, 251));
             
             // packets with no continuation
-            if (packetSize < 251) handlePacket(inBuff, packetSize);
+            std::cout << "ps: " << (int) packetSize << "\n";
+            if (packetSize < 251) handlePacket(inBuff, packetSize, header[1] & 0x0F);
         }
         else
         {
@@ -206,7 +213,8 @@ int Comm::processRawData(uint8_t* data, int dataLength)
             dataReceived += dataLength - 4; // Keep track of how much data has been received in this larger data packet. Used to calculate how much more data to expect
 
             // packet is over, now it can be processed further
-             if (packetSize == dataReceived) handlePacket(inBuff, packetSize);
+            std::cout << "ps: " << (int) packetSize << "dr: " << dataReceived << "\n";
+            if (packetSize == dataReceived) handlePacket(inBuff, packetSize, header[1] & 0x0F);
 
         }
         // update sequence number, uses the packet's seqNum to correct itself if packets have been lost, but data becomes parsable again
@@ -217,44 +225,39 @@ int Comm::processRawData(uint8_t* data, int dataLength)
     return -1;
 }
 
-int Comm::handlePacket(uint8_t* data, int size)
+int Comm::handlePacket(uint8_t* data, int size, int type)
 {
-    uint8_t packetType = *(data + 1) & 0x0F;
-
-    switch (packetType)
+    std::cout << "handling packets\n";
+    switch (type)
     {
         case REPORT:
             std::memcpy(lastPacket, data, size);
             break;
 
         case STRUCT_CONF:
-            int fieldCounter = 0;
-            for (int i = 0; i < size; i++)
-            {
-                if (data[i] == 0x00) // Null termination
-                {
-                    fieldCounter++;
-                    continue;
-                }
+            std::cout << "struct conf packet " << size << "\n";
 
-                // Add character to current processed field
-                structure[i] += (char) data[i];
+            int fieldCounter = 0;
+            structure.clear();
+            int j = 0;
+
+            for (int i = 0; i < size; i++) {
+                    std::cout << "i " << i << "\n";
+                    structure.push_back(std::string((char*) (data + i)));
+                    i += structure[j++].length();
             }
 
+            for (std::string s : structure) std::cout << s << "\n";
+
             break;
+
     };
-}
-
-int Comm::send(uint8_t* data, int dataLength) {
-    if (dataLength > 255) return -1;
-
-    #ifdef LORA
-    LoRa.beginPacket();
-    LoRa.write(buffer, len);
-    LoRa.endPacket();
-    #endif
 
     return 0;
+}
+void Comm::receiverCallback(uint8_t* data, int size)
+{
+    processRawData(data, size);
 }
 
 int Comm::sendStructure()
@@ -271,6 +274,8 @@ int Comm::sendStructure()
     int i = 0;
     for (std::string field : structure)
     {
+        if (field == "") break;
+
         // copy stringdata, and update index
         std::strcpy(data + i, field.c_str());
         i += field.length() + 1;
@@ -279,22 +284,11 @@ int Comm::sendStructure()
     // send
     sendData((uint8_t*) data, dataSize, STRUCT_CONF);
     std::free(data);
+
+    return 0;
 }
 
-void receiverCallback(int len)
-{
-    #ifdef LORA
-    for (int i = 0; i < len; i++)
-    {
-        int data = LoRa.read();
-        while (data == -1);
-        inBuff[i] = (uint8_t) data;
-    }
-    #endif
-}
-
-Comm::Comm()
-{}
+Comm::Comm(int (*writeHAL)(uint8_t*, int)) : writeHAL(writeHAL) {}
 
 Comm::~Comm()
 {
@@ -302,11 +296,43 @@ Comm::~Comm()
     std::free(outBuff);
 }
 
-int main() 
-{
-    Comm comm;
+Comm* cp2 = nullptr;
+Comm* cp1 = nullptr;
 
-    comm.sendStructure();
+int write1(uint8_t* d, int s) {
+    cp2->receiverCallback(d, s);
+    return 0;
+}
+
+int write2(uint8_t* d, int s) {
+    cp1->receiverCallback(d, s);
+    return 0;
+}
+
+int main() 
+{   
+    
+    Comm comm1(write1);
+    cp1 = &comm1;
+
+    Comm comm2(write2);
+    cp2 = &comm2;
+
+    comm1.addField<int>("itest");
+    comm1.addField<std::string>("stest", 4);
+    comm1.addField<double>("dtest");
+
+    comm1.sendStructure();
+
+    comm1.setField("itest", 420);
+    comm1.setField<std::string>("stest", "cock");
+    comm1.setField("dtest", 420.69);
+
+    comm1.sendReport();
+
+    std::cout << comm2.getField<int>("itest") << "\n";
+    std::cout << comm2.getField<std::string>("stest") << "\n";
+    std::cout << comm2.getField<double>("dtest") << "\n";
 
     return 0;
 }
