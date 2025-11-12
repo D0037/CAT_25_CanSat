@@ -19,6 +19,7 @@ public:
     /* Constructor, a hardware transmit function should be supplied that has 2 arguments: `uin8_t* buffer`, and `int size`*/
     Comm(int (*f)(uint8_t* data, int size));
 
+    /* Destructor */
     ~Comm();
 
     /*
@@ -48,6 +49,8 @@ public:
 
         @tparam T the type of the field. is neccessary, unless the compiler specifically knows it from the expected return value
         @param field the name of the field
+
+        @returns the value of the field
     */
     template <typename T>
     T getField(std::string field);
@@ -66,6 +69,20 @@ public:
         @brief this is a function that should be called when a packet arrives
     */
     void receiverCallback(uint8_t* data, int len); 
+
+    /*
+        @brief tells whether a sync packet has arrived or not
+
+        @returns bool
+    */
+    bool getSynced();
+
+    /*
+        @brief checks if new report packets have arrived since the last call of this function
+
+        @return bool
+    */
+   bool isUpdated();
 private:
     int send(uint8_t* data, int dataLength);
     int sendData(uint8_t* data, int dataLength, uint8_t packetType); // sends dataLength bytes of data, handles headers
@@ -88,4 +105,7 @@ private:
 
     int inSeqNum = 0;
     int outSeqNum = 0;
+
+    bool synced = false;
+    bool updated = false;
 };

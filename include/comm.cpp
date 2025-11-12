@@ -47,7 +47,7 @@ int Comm::setField(std::string field, T value)
             if (field == structure[i])
             {
                 // check if the string to store isn't too long
-                if (i + value.length() > PACKET_SIZE-1 || structure[i + value.length() - 1] != field) return -2;
+                if (i + value.length() > structure.size() || structure[i + value.length() - 1] != field) return -2;
                 // store data in the output buffer
                 std::memcpy(outBuff + i,  value.c_str(), value.length());
                 return 0;
@@ -98,7 +98,7 @@ T Comm::getField(std::string field)
             if (structure[i] == field)
             {   
                 // casts to correct pointer type, dereferences and returns the value
-                return * (T*)(lastPacket + i);
+                return *(T*)(lastPacket + i);
             }
         }
     }
@@ -227,28 +227,29 @@ int Comm::processRawData(uint8_t* data, int dataLength)
 
 int Comm::handlePacket(uint8_t* data, int size, int type)
 {
-    std::cout << "handling packets\n";
     switch (type)
     {
         case REPORT:
+            /*
+                Store received data
+            */
             std::memcpy(lastPacket, data, size);
+            updated = true;
             break;
 
         case STRUCT_CONF:
-            std::cout << "struct conf packet " << size << "\n";
-
-            int fieldCounter = 0;
+            /*
+                Update the structure
+            */
             structure.clear();
             int j = 0;
 
             for (int i = 0; i < size; i++) {
-                    std::cout << "i " << i << "\n";
                     structure.push_back(std::string((char*) (data + i)));
                     i += structure[j++].length();
             }
 
-            for (std::string s : structure) std::cout << s << "\n";
-
+            synced = true;
             break;
 
     };
@@ -288,6 +289,18 @@ int Comm::sendStructure()
     return 0;
 }
 
+bool Comm::getSynced()
+{
+    return synced;
+}
+
+bool Comm::isUpdated()
+{
+    if (!updated) return false;
+    updated = false;
+    return true;
+}
+
 Comm::Comm(int (*writeHAL)(uint8_t*, int)) : writeHAL(writeHAL) {}
 
 Comm::~Comm()
@@ -296,7 +309,7 @@ Comm::~Comm()
     std::free(outBuff);
 }
 
-Comm* cp2 = nullptr;
+/*Comm* cp2 = nullptr;
 Comm* cp1 = nullptr;
 
 int write1(uint8_t* d, int s) {
@@ -335,4 +348,4 @@ int main()
     std::cout << comm2.getField<double>("dtest") << "\n";
 
     return 0;
-}
+}*/
