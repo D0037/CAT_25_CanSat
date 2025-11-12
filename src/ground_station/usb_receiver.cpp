@@ -96,33 +96,29 @@ int main()
     bool s = false;
 
     for(;;)
-    {
+    {   
+        // packet is read from usb serial as hex encoded bytes in strings
         string d = readLine(serial);
         if (d.compare("packet received:") == 0)
         {
             d = d.substr(16);
-
+            
             for (int i = 0; i < d.length() / 2; i++)
-            {   
-                
+            {    
                 char c1 = d.at(2*i);
                 char c2 = d.at(2*i+1);
-
-                if (c1 <= '9')
-                {
+                
+                // First character: lower 4 bits
+                if (c1 <= '9') {
                     buff[i] = c1 - '0';
-                }
-                else
-                {
+                } else {
                     buff[i] = c1 - 'A' + 10;
                 }
-
-                if (c2 <= '9')
-                {
+                
+                // 2nd character: higher 4 bits
+                if (c2 <= '9') {
                     buff[i] |= 16 * (c2 - '0');
-                }
-                else
-                {
+                } else {
                     buff[i] |= 16 * (c2 - 'A' + 10);
                 }
 
@@ -131,19 +127,25 @@ int main()
             comm.receiverCallback(buff, d.length() / 2);
         }
         
-        // this is useful, if you have a receiver-transmitter configuration
+        // this is useful if you have a receiver-transmitter configuration
         // this will check if a sync packet packet has arrived
         if (comm.getSynced())
         {
             if (!s) cout << "\t\t Sync packet arrived!\n";
             s = true;
 
-            /* Write code here */
+            // Runs if there is new data available
+            if (comm.isUpdated())
+            {
 
-            // random examples
-            cout << "temperature: " << comm.getField<float>("temp") << " C\n";
-            cout << "GPS coords: " << comm.getField<std::string>("GPS") << "\n";
-            cout << "pressure " << comm.getField<double>("p") << "kPa \n";
+                /* Write code here */
+
+                // random examples
+                cout << "temperature: " << comm.getField<float>("temp") << " C\n";
+                cout << "GPS coords: " << comm.getField<std::string>("GPS") << "\n";
+                cout << "pressure " << comm.getField<double>("p") << "kPa \n";
+
+            }
         }
 
     }
