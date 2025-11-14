@@ -10,6 +10,52 @@
             "cStandard": "c17",
             "cppStandard": "c++17",
             "intelliSenseMode": "linux-gcc-x64"
+        },
+        {
+            "name": "pico",
+            "includePath": [
+                "${workspaceFolder}/**"
+            ],
+            "defines": [],
+            "compilerPath": "/usr/bin/ar",
+            "cStandard": "c17",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "gcc-arm"
+        },
+        {
+            "name": "Pico SDK",
+            "compilerPath": "/usr/bin/arm-none-eabi-g++",
+            "intelliSenseMode": "gcc-arm",
+            "defines": [
+                "PICO_RP2040",
+                "PICO_PLATFORM=rp2040",
+                "NDEBUG"
+            ],
+            "includePath": [
+                "${workspaceFolder}/rp2040_main/**",
+                "${env:PICO_SDK_PATH}/src/*/*/include",
+                "${env:PICO_SDK_PATH}/src/*/include",
+                "${env:PICO_SDK_PATH}/src/common/pico_stdlib_headers/include",
+                "${env:PICO_SDK_PATH}/src/common/pico_base_headers/include",
+                "${env:PICO_SDK_PATH}/src/rp2040/pico_platform/include",
+                "${env:PICO_SDK_PATH}/src/rp2_common/hardware_gpio/include",
+                "${env:PICO_SDK_PATH}/src/rp2_common/hardware_base/include",
+                "${env:PICO_SDK_PATH}/src/rp2_common/hardware_sync/include",
+                "${env:PICO_SDK_PATH}/src/rp2_common/hardware_resets/include",
+                "${env:PICO_SDK_PATH}/src/rp2_common/hardware_irq/include",
+                "${env:PICO_SDK_PATH}/src/rp2_common/*/include",
+                "${env:PICO_SDK_PATH}/src/rp2040/hardware_regs/include",
+                "${env:PICO_SDK_PATH}/src/rp2_common/pico_platform_compiler/include"
+            ],
+            "cStandard": "c11",
+            "cppStandard": "c++17",
+            "browse": {
+                "path": [
+                    "${workspaceFolder}",
+                    "${env:PICO_SDK_PATH}"
+                ],
+                "limitSymbolsToIncludedHeaders": false
+            }
         }
     ],
     "version": 4

@@ -32,6 +32,7 @@ public:
     */
     template <typename T>
     int addField(std::string field, int maxLength = 0);
+
     
     /*
         @brief Sets the given field's value.
@@ -44,6 +45,7 @@ public:
     template <typename T>
     int setField(std::string field, T value);
 
+
     /*
         @brief Returns the value of a given field
 
@@ -55,20 +57,24 @@ public:
     template <typename T>
     T getField(std::string field);
 
+    
     /*
         @brief Transmits all the fields' values.
     */
     int sendReport();
+
 
     /*
         @brief send packet metadata based on currently existing fields. if fields have been added should be ran again
     */
     int sendStructure();
 
+
     /*
         @brief this is a function that should be called when a packet arrives
     */
     void receiverCallback(uint8_t* data, int len); 
+
 
     /*
         @brief tells whether a sync packet has arrived or not
@@ -76,6 +82,7 @@ public:
         @returns bool
     */
     bool getSynced();
+
 
     /*
         @brief checks if new report packets have arrived since the last call of this function
@@ -109,3 +116,5 @@ private:
     bool synced = false;
     bool updated = false;
 };
+
+#include "comm.cpp"

@@ -2,5 +2,12 @@
     "files.associations": {
         "string": "cpp",
         "cstdint": "cpp"
-    }
+    },
+    "cmake.sourceDirectory": "/mnt/server/CanSat/rp2040_main",
+    "cmake.buildDirectory": "${workspaceFolder}/rp2040_main/build/",
+    "cmake.generator": "Unix Makefiles",
+    "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
+    "C_Cpp.errorSquiggles": "enabled",
+    "C_Cpp.intelliSenseEngine": "default",
+
 }

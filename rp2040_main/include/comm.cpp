@@ -72,12 +72,6 @@ int Comm::setField(std::string field, T value)
 template <typename T> // type of field to get
 T Comm::getField(std::string field)
 {   
-    std::cout << std::hex << std::uppercase;
-    for (int i = 0; i < buffSize; i++)
-    {
-        std::cout << (int) lastPacket[i] << " ";
-    }
-    std::cout << "\n";
 
     T value;
     if constexpr (std::is_same_v<T, std::string>)
@@ -111,9 +105,6 @@ int Comm::sendReport() {
 }
 
 int Comm::sendData(uint8_t* data, int dataLength, uint8_t packetType) {
-    std::cout << std::hex << std::uppercase;
-
-    std::cout << "dl: 0x" << dataLength << "\n";
 
     // increase buffer size, if it is needed
     if (dataLength > buffSize)
@@ -174,10 +165,6 @@ int Comm::processRawData(uint8_t* data, int dataLength)
     uint8_t header[4];
     std::memcpy(header, data, 4);
 
-    std::cout << "packet ";
-    for (int i = 0; i < dataLength; i++) std::cout << (int) data[i] << " ";
-    std::cout << "\n";
-
     bool continuation = header[1] & 0x10;
 
     // Only process packet if sequence number is correct
@@ -188,7 +175,6 @@ int Comm::processRawData(uint8_t* data, int dataLength)
         if (!continuation)
         {
             packetSize = header[2] | (header[3] << 8);
-            std::cout << "packetsize: " << packetSize << "\n";
 
             // Buffer is not large enough, resize is needed
             if (packetSize > buffSize)
@@ -201,7 +187,6 @@ int Comm::processRawData(uint8_t* data, int dataLength)
             std::memcpy(inBuff, data + 4, std::min<uint16_t>(packetSize, 251));
             
             // packets with no continuation
-            std::cout << "ps: " << (int) packetSize << "\n";
             if (packetSize < 251) handlePacket(inBuff, packetSize, header[1] & 0x0F);
         }
         else
@@ -213,7 +198,6 @@ int Comm::processRawData(uint8_t* data, int dataLength)
             dataReceived += dataLength - 4; // Keep track of how much data has been received in this larger data packet. Used to calculate how much more data to expect
 
             // packet is over, now it can be processed further
-            std::cout << "ps: " << (int) packetSize << "dr: " << dataReceived << "\n";
             if (packetSize == dataReceived) handlePacket(inBuff, packetSize, header[1] & 0x0F);
 
         }
