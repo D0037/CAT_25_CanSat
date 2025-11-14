@@ -100,7 +100,7 @@ int LoRaClass::begin(long frequency)
 
 
   // start SPI
-  printf("set baudrate: %u\n", spi_init(SPI_PORT, 8E6));
+  printf("set baudrate: %u\n", spi_init(SPI_PORT, 4E6));
   gpio_set_function(PIN_SCK, GPIO_FUNC_SPI);
   gpio_set_function(PIN_MISO, GPIO_FUNC_SPI);
   gpio_set_function(PIN_MOSI, GPIO_FUNC_SPI);

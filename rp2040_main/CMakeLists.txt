@@ -33,6 +33,7 @@ target_link_libraries(${PROJECT_NAME}
     hardware_gpio
     hardware_adc
     hardware_spi
+    hardware_i2c
     # add others as needed (hardware_uart, hardware_pwm, etc.)
 )
 
